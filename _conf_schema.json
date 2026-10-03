@@ -1,0 +1,240 @@
+{
+    "ai": {
+        "description": "AI 研判配置",
+        "type": "object",
+        "items": {
+            "ai_provider_id": {
+                "description": "用于举报研判的 AI 提供商",
+                "hint": "留空或填写的提供商不存在时，使用当前会话默认的 AI 提供商；也可指定 DeepSeek 等具体提供商 ID",
+                "type": "string",
+                "default": "",
+                "_special": "select_provider"
+            },
+            "ai_confidence_threshold": {
+                "description": "判定违规的置信度阈值",
+                "hint": "AI 判断为违规且置信度达到该阈值才会自动撤回/禁言，否则转人工。范围 0~1",
+                "type": "float",
+                "default": 0.7
+            },
+            "ai_timeout": {
+                "description": "AI 单次调用超时时间(秒)",
+                "type": "int",
+                "hint": "超过该时间未返回结果则视为无法判断，转人工处理",
+                "slider": {
+                    "min": 5,
+                    "max": 120,
+                    "step": 5
+                },
+                "default": 30
+            },
+            "ai_retry_times": {
+                "description": "AI 调用失败重试次数",
+                "type": "int",
+                "slider": {
+                    "min": 0,
+                    "max": 5,
+                    "step": 1
+                },
+                "default": 1
+            },
+            "ai_system_prompt": {
+                "description": "AI 研判系统提示词",
+                "hint": "可用变量：{group_rules}。请务必保留要求 AI 输出 JSON 的说明（decision/confidence/reason/target_message_id）",
+                "type": "text",
+                "default": "你是一个严格的群聊内容审核助手。请根据群规判断「被举报的消息或用户最近发言」是否违规。\n违规类型包括：涉政、广告、刷屏、辱骂、骚扰、色情、诈骗、人身攻击、违反群规等。\n你必须只输出一个 JSON 对象，不要输出任何多余文字，格式如下：\n{\"decision\": \"violate|safe|uncertain\", \"confidence\": 0.0, \"reason\": \"简短原因\", \"target_message_id\": \"\"}\ndecision 说明：violate=确认违规；safe=确认安全；uncertain=无法判断或证据不足。\nconfidence 为 0 到 1 之间的小数。\n若你能确定某条消息违规，请把该消息ID填入 target_message_id，否则留空。\n【本群群规】\n{group_rules}"
+            }
+        }
+    },
+    "groups": {
+        "description": "默认群配置（可被分群配置覆盖）",
+        "type": "object",
+        "items": {
+            "default_group_rules": {
+                "description": "默认群规",
+                "hint": "AI 研判依据的默认群规，分群配置可单独覆盖",
+                "type": "text",
+                "default": "1. 禁止发布涉政、色情、暴力、赌博、诈骗等违法内容；\n2. 禁止刷屏、广告、外链推广；\n3. 禁止辱骂、人身攻击、骚扰他人；\n4. 其他影响群内秩序的行为。"
+            },
+            "default_receiver_ids": {
+                "description": "默认指定用户 QQ 列表",
+                "hint": "转人工时，除 bot 管理员外，还会私聊通知这些 QQ。可被分群配置覆盖",
+                "type": "list",
+                "default": []
+            },
+            "auto_include_group_admins": {
+                "description": "自动把本群管理员纳入通知对象",
+                "hint": "开启后，会通过群成员列表自动识别群主/管理员并一同私聊通知",
+                "type": "bool",
+                "default": false
+            },
+            "default_mute_duration": {
+                "description": "默认禁言时长(秒)",
+                "hint": "AI 判定违规并自动处理时的禁言时长，单位秒，例如 600 = 10 分钟",
+                "type": "int",
+                "slider": {
+                    "min": 60,
+                    "max": 2592000,
+                    "step": 60
+                },
+                "default": 600
+            },
+            "recent_msg_count": {
+                "description": "无引用举报时读取的最近消息条数",
+                "hint": "从机器人消息缓存中读取被举报人最近的 N 条消息交给 AI 分析",
+                "type": "int",
+                "slider": {
+                    "min": 1,
+                    "max": 30,
+                    "step": 1
+                },
+                "default": 10
+            },
+            "report_cooldown": {
+                "description": "举报冷却时间(秒)",
+                "hint": "同一人在同一群两次举报之间的最小间隔，0 表示不限制",
+                "type": "int",
+                "slider": {
+                    "min": 0,
+                    "max": 600,
+                    "step": 10
+                },
+                "default": 60
+            },
+            "daily_report_limit": {
+                "description": "单人每日举报上限",
+                "hint": "同一人每天最多举报次数，0 表示不限制",
+                "type": "int",
+                "slider": {
+                    "min": 0,
+                    "max": 200,
+                    "step": 5
+                },
+                "default": 20
+            },
+            "group_overrides": {
+                "description": "分群覆盖配置(JSON)",
+                "hint": "JSON 对象，key 为群号。可覆盖字段：group_rules、receiver_ids、mute_duration、recent_msg_count、report_cooldown、daily_limit、notify_admin_when_safe、announce_safe_in_group、auto_include_group_admins、reply_content、warn_template、safe_group_template。示例：{\"123456\": {\"mute_duration\": 3600, \"receiver_ids\": [\"10001\"]}}",
+                "type": "text",
+                "default": "{}"
+            }
+        }
+    },
+    "behavior": {
+        "description": "行为与通知开关",
+        "type": "object",
+        "items": {
+            "notify_admin_when_safe": {
+                "description": "AI 判断安全时是否通知管理员和指定用户",
+                "hint": "开启后：AI 判断消息安全时，用「安全通知模板」私聊通知管理员与指定用户；关闭后：安全则直接结束，不发送任何私聊。该通知仅告知，不要求回复 1",
+                "type": "bool",
+                "default": false
+            },
+            "announce_safe_in_group": {
+                "description": "AI 判断安全时是否在群内发送安全提示",
+                "hint": "开启后：AI 判断消息安全时，会在群里发一条「已核实安全、不作处理」的提示（文案用「群内安全提示模板」）；关闭后：安全则不在群里发任何消息",
+                "type": "bool",
+                "default": false
+            },
+            "notify_on_resolved": {
+                "description": "处理完成后是否通知其他已通知对象",
+                "hint": "有人回复 1 处理完成后，是否向其他已通知过的管理员/指定用户发送「已处理」通知",
+                "type": "bool",
+                "default": true
+            },
+            "broadcast_result_in_group": {
+                "description": "在群内播报处理结果",
+                "hint": "开启后，处理完成会在群内发送一条播报消息",
+                "type": "bool",
+                "default": false
+            },
+            "enable_target_report_count": {
+                "description": "统计被举报人累计被举报次数",
+                "hint": "按「群 + 被举报人」累计，用于模板变量 {target_report_count}",
+                "type": "bool",
+                "default": true
+            },
+            "allow_everyone_report": {
+                "description": "允许所有人举报",
+                "hint": "关闭后，仅「举报人白名单」中的用户可以举报",
+                "type": "bool",
+                "default": true
+            },
+            "reporters_whitelist": {
+                "description": "举报人白名单",
+                "hint": "仅在「允许所有人举报」关闭时生效",
+                "type": "list",
+                "default": []
+            },
+            "receiver_can_handle": {
+                "description": "指定用户与管理同等处理权限",
+                "hint": "开启后，被通知的「指定用户」回复 1 也视为处理完成；关闭后仅 bot 管理员回复 1 有效",
+                "type": "bool",
+                "default": true
+            },
+            "reply_content": {
+                "description": "管理员处理完成的回复内容",
+                "type": "string",
+                "default": "1"
+            },
+            "report_expire_minutes": {
+                "description": "举报超时未处理时长(分钟)",
+                "hint": "超过该时长仍无人回复 1，则标记为 expired",
+                "type": "int",
+                "slider": {
+                    "min": 5,
+                    "max": 1440,
+                    "step": 5
+                },
+                "default": 60
+            }
+        }
+    },
+    "templates": {
+        "description": "通知与警告模板",
+        "type": "object",
+        "items": {
+            "warn_template": {
+                "description": "群内警告模板",
+                "hint": "AI 自动处理时在群内发送，会先自动艾特被举报人。可用变量：{target} {warn_count} {mute_duration} {group_id}",
+                "type": "text",
+                "default": "你发送的消息不合群规，警告第 {warn_count} 次。已禁言 {mute_duration}。"
+            },
+            "safe_group_template": {
+                "description": "群内安全提示模板",
+                "hint": "AI 判断安全且「群内安全提示」开关打开时，在群里发送。可用变量：{target} {group_name} {group_id} {report_id} {reporter} {ai_judgement} {ai_confidence} {target_report_count}",
+                "type": "text",
+                "default": "【举报结果】经 AI 初步判断，{target} 被举报的消息未发现违规，本次不作处理。"
+            },
+            "safe_notify_template": {
+                "description": "安全通知模板",
+                "hint": "AI 判断安全且开关打开时发送。可用变量见 README",
+                "type": "text",
+                "default": "【举报通知-AI判断安全】\n群：{group_name}({group_id})\n发送者/被举报人：{target}\n消息内容：{message}\n举报人：{reporter}\n被举报人累计被举报次数：第 {target_report_count} 次\nAI初步判断：{ai_judgement}（置信度：{ai_confidence}）\n说明：AI判断该消息未发现违规，暂不处理。"
+            },
+            "manual_notify_template": {
+                "description": "转人工通知模板(引用举报，含消息内容)",
+                "hint": "AI 拿不准且为引用举报时使用。可用变量见 README",
+                "type": "text",
+                "default": "【举报待处理-AI拿不准】\n群：{group_name}({group_id})\n发送者/被举报人：{target}\n消息内容：{message}\n举报人：{reporter}\n被举报人累计被举报次数：第 {target_report_count} 次\nAI初步判断：{ai_judgement}（置信度：{ai_confidence}）\n请管理员分析并处理。处理完请回复 1。\n举报ID：{report_id}"
+            },
+            "manual_notify_template_nocontent": {
+                "description": "转人工通知模板(无引用举报，不含消息内容)",
+                "hint": "无引用举报转人工时使用，为防止机器人被封号，不能包含具体消息内容，只能给出最近消息的发送时间",
+                "type": "text",
+                "default": "【举报待处理-AI拿不准】\n群：{group_name}({group_id})\n发送者/被举报人：{target}\n消息内容：（无引用举报，为防止封号不展示具体消息内容）\n该用户最近 {recent_count} 条消息发送时间：{recent_times}\n举报人：{reporter}\n被举报人累计被举报次数：第 {target_report_count} 次\nAI初步判断：{ai_judgement}（置信度：{ai_confidence}）\n请管理员分析并处理。处理完请回复 1。\n举报ID：{report_id}"
+            },
+            "resolved_notify_template": {
+                "description": "处理完成通知模板",
+                "hint": "有人回复 1 处理完成后，向其他已通知对象发送",
+                "type": "text",
+                "default": "【举报已处理】\n举报ID：{report_id}\n群：{group_name}({group_id})\n已经由管理员：{handler} 处理。"
+            },
+            "group_broadcast_template": {
+                "description": "群内处理结果播报模板",
+                "hint": "仅在「在群内播报处理结果」开启时使用",
+                "type": "text",
+                "default": "举报（{report_id}）已由 {handler} 处理完成。"
+            }
+        }
+    }
+}

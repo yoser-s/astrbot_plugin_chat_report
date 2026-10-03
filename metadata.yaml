@@ -1,0 +1,16 @@
+name: astrbot_plugin_chat_report
+display_name: 聊天消息举报
+desc: 聊天消息举报插件：AI自动研判，违规自动撤回/警告/禁言，拿不准时转人工私聊管理员处理
+short_desc: 聊天消息举报与AI自动研判处理
+author: yosers
+version: 1.0.0
+repo: https://github.com/yoser-s/astrbot_plugin_chat_report
+license: MIT
+support_platforms:
+  - aiocqhttp
+astrbot_version: ">=4.16,<5"
+tags:
+  - 举报
+  - 群管
+  - 审核
+  - AI

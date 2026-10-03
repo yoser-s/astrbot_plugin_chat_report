@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>聊天消息举报 · 配置</title>
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+<style>
+  :root {
+    --bg: #f2f3f7;
+    --panel: #ffffff;
+    --side: #ffffff;
+    --text: #17181c;
+    --muted: #6b7280;
+    --faint: #9aa1ac;
+    --border: #e6e8ee;
+    --soft: #f7f8fb;
+    --primary: #4f46e5;
+    --primary-weak: #eef0ff;
+    --primary-hover: #4338ca;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --err: #dc2626;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 20px rgba(16,24,40,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101216;
+      --panel: #171a20;
+      --side: #14171c;
+      --text: #e8eaee;
+      --muted: #9ba2ad;
+      --faint: #737a86;
+      --border: #262a32;
+      --soft: #1c2027;
+      --primary: #6d67f0;
+      --primary-weak: #23214a;
+      --primary-hover: #7f79f5;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.28);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  .app { display: flex; height: 100%; min-height: 100%; }
+
+  /* ---------------- 侧边导航 ---------------- */
+  .side {
+    width: 216px; flex: 0 0 216px; background: var(--side);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    padding: 18px 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 16px; }
+  .brand .logo {
+    width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto;
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    display: flex; align-items: center; justify-content: center; color: #fff;
+  }
+  .brand .logo svg { width: 18px; height: 18px; }
+  .brand .t { font-weight: 700; font-size: 14px; line-height: 1.25; }
+  .brand .s { font-size: 11.5px; color: var(--faint); }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 11px;
+    border: none; background: transparent; color: var(--muted);
+    border-radius: 9px; font-size: 13.5px; font-family: inherit;
+    cursor: pointer; text-align: left; width: 100%; transition: background .14s, color .14s;
+  }
+  .nav-item svg { width: 16px; height: 16px; flex: 0 0 auto; opacity: .85; }
+  .nav-item:hover { background: var(--soft); color: var(--text); }
+  .nav-item.active { background: var(--primary-weak); color: var(--primary); font-weight: 600; }
+  .nav-item.active svg { opacity: 1; }
+  .nav-foot { margin-top: auto; padding: 10px 11px 0; font-size: 11.5px; color: var(--faint); }
+
+  /* ---------------- 主区域 ---------------- */
+  .main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    padding: 14px 22px; border-bottom: 1px solid var(--border);
+    background: var(--panel); position: sticky; top: 0; z-index: 10;
+  }
+  .topbar h1 { font-size: 16px; margin: 0; }
+  .topbar .crumb { font-size: 12px; color: var(--faint); margin-top: 1px; }
+  .top-actions { display: flex; align-items: center; gap: 8px; }
+  .dirty {
+    display: none; align-items: center; gap: 6px; color: var(--warn);
+    font-size: 12px; margin-right: 2px;
+  }
+  .dirty.on { display: flex; }
+  .dirty .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+  .content { flex: 1 1 auto; overflow: auto; padding: 22px; }
+  .view { max-width: 860px; margin: 0 auto; }
+  .view[hidden] { display: none; }
+
+  /* ---------------- 卡片 ---------------- */
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .card-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--border); }
+  .card-head h2 { font-size: 14.5px; margin: 0 0 3px; }
+  .card-head p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .card-body { padding: 4px 18px 14px; }
+  .field { padding: 13px 0; border-bottom: 1px dashed var(--border); }
+  .field:last-child { border-bottom: none; }
+  .field .head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .field .label { font-weight: 600; font-size: 13.5px; }
+  .field .hint { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .field .ctrl { margin-top: 9px; }
+  .field.has-ctrl .ctrl { margin-top: 9px; }
+  .unit { display: flex; align-items: center; gap: 8px; }
+  .unit .u { color: var(--faint); font-size: 12.5px; }
+  .preset-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+  /* ---------------- 控件 ---------------- */
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%; padding: 8px 11px; border: 1px solid var(--border);
+    border-radius: 9px; background: var(--panel); color: var(--text);
+    font-size: 13.5px; font-family: inherit; outline: none;
+    transition: border-color .14s, box-shadow .14s;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-weak);
+  }
+  textarea { resize: vertical; line-height: 1.6; }
+  textarea.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+  input[type="number"] { max-width: 170px; }
+  .switch { position: relative; display: inline-block; width: 44px; height: 25px; flex: 0 0 auto; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .track {
+    position: absolute; inset: 0; background: #cbd2dc; border-radius: 999px;
+    transition: background .18s; cursor: pointer;
+  }
+  .switch .track::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 19px; height: 19px;
+    background: #fff; border-radius: 50%; transition: transform .18s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.28);
+  }
+  .switch input:checked + .track { background: var(--primary); }
+  .switch input:checked + .track::after { transform: translateX(19px); }
+
+  .btn {
+    padding: 8px 15px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); font-size: 13.5px;
+    font-family: inherit; cursor: pointer; white-space: nowrap;
+    transition: background .14s, border-color .14s, opacity .14s;
+  }
+  .btn:hover { border-color: var(--primary); color: var(--primary); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn.primary:hover { background: var(--primary-hover); color: #fff; }
+  .btn.sm { padding: 5px 11px; font-size: 12.5px; border-radius: 8px; }
+  .btn.danger:hover { border-color: var(--err); color: var(--err); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  .btn-ghost:hover { background: var(--soft); border-color: transparent; color: var(--text); }
+
+  /* ---------------- 变量按钮 ---------------- */
+  .vars { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .var {
+    font-size: 11.5px; padding: 3px 9px; border-radius: 999px; cursor: pointer;
+    background: var(--soft); border: 1px solid var(--border); color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    transition: all .14s;
+  }
+  .var:hover { background: var(--primary-weak); border-color: var(--primary); color: var(--primary); }
+
+  /* ---------------- 分群覆盖 ---------------- */
+  .ov-tip {
+    display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px;
+    background: var(--soft); border: 1px solid var(--border); border-radius: 10px;
+    font-size: 12.5px; color: var(--muted); margin-bottom: 16px;
+  }
+  .ov-tip svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 1px; color: var(--primary); }
+  .ov-empty { text-align: center; color: var(--faint); padding: 34px 10px; font-size: 13px; }
+  .ov-card { border: 1px solid var(--border); border-radius: 11px; margin-bottom: 14px; overflow: hidden; background: var(--panel); }
+  .ov-card-head {
+    display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+    background: var(--soft); border-bottom: 1px solid var(--border);
+  }
+  .ov-card-head .gid { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+  .ov-card-head .gid input { max-width: 200px; }
+  .ov-card-head .tag { font-size: 11.5px; color: var(--faint); }
+  .ov-fields { padding: 6px 14px 12px; }
+  .ov-field { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+  .ov-field:last-child { border-bottom: none; }
+  .ov-field .chk { display: flex; align-items: center; gap: 7px; flex: 0 0 172px; cursor: pointer; }
+  .ov-field .chk input { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; }
+  .ov-field .chk span { font-size: 13px; color: var(--faint); }
+  .ov-field.on .chk span { color: var(--text); font-weight: 600; }
+  .ov-field .ov-ctrl { flex: 1 1 auto; min-width: 0; display: none; }
+  .ov-field.on .ov-ctrl { display: block; }
+  .ov-field .ov-ctrl .switch { margin-top: 2px; }
+
+  #toast-box {
+    position: fixed; left: 50%; top: 16px; transform: translateX(-50%);
+    z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: center;
+    pointer-events: none;
+  }
+  .toast {
+    padding: 9px 16px; border-radius: 999px; color: #fff; font-size: 13px;
+    box-shadow: 0 8px 22px rgba(0,0,0,.2); animation: pop .18s ease-out; max-width: 82vw;
+  }
+  .toast.ok { background: var(--ok); }
+  .toast.warn { background: var(--warn); }
+  .toast.err { background: var(--err); }
+  .toast.info { background: #4b5563; }
+  @keyframes pop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+  .skeleton { color: var(--faint); text-align: center; padding: 60px 0; }
+
+  /* ---------------- 手机 ---------------- */
+  @media (max-width: 820px) {
+    .app { flex-direction: column; }
+    .side {
+      width: 100%; flex: 0 0 auto; flex-direction: row; align-items: center;
+      padding: 10px 12px; border-right: none; border-bottom: 1px solid var(--border);
+      overflow-x: auto; gap: 8px;
+    }
+    .brand { padding: 0 10px 0 2px; flex: 0 0 auto; }
+    .brand .t, .brand .s { display: none; }
+    .nav { flex-direction: row; gap: 6px; }
+    .nav-item { white-space: nowrap; padding: 8px 12px; }
+    .nav-item span { display: inline; }
+    .nav-foot { display: none; }
+    .topbar { padding: 12px 14px; }
+    .content { padding: 14px 12px 30px; }
+    .ov-field { flex-direction: column; gap: 6px; }
+    .ov-field .chk { flex: 0 0 auto; }
+    input[type="number"] { max-width: 130px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z"/>
+          <path d="M9.2 12.2l2 2 3.6-3.8"/>
+        </svg>
+      </div>
+      <div>
+        <div class="t">聊天消息举报</div>
+        <div class="s">插件配置</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="nav-foot">修改后点击右上角「保存配置」生效</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="page-title">AI 研判</h1>
+        <div class="crumb" id="page-crumb">聊天消息举报 · 配置</div>
+      </div>
+      <div class="top-actions">
+        <span class="dirty" id="dirty"><span class="dot"></span>未保存</span>
+        <button class="btn" id="btn-reload">重新加载</button>
+        <button class="btn primary" id="btn-save" disabled>保存配置</button>
+      </div>
+    </div>
+    <div class="content">
+      <div id="views"><div class="skeleton">正在载入配置…</div></div>
+    </div>
+  </div>
+</div>
+<datalist id="known-groups"></datalist>
+<div id="toast-box"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var bridge = window.bridge || window.AstrBotPluginPage;
+
+  /* ================= 图标 ================= */
+  var ICON = {
+    ai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"/><path d="M18.5 15.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8.8-1.9z"/></svg>',
+    groups: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M20 19v-1.4a3.4 3.4 0 0 0-2.6-3.3"/><path d="M15.5 5.2a3.2 3.2 0 0 1 0 5.6"/></svg>',
+    behavior: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h4"/><path d="M12 17h8"/><circle cx="10" cy="17" r="2"/></svg>',
+    templates: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>',
+    overrides: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>'
+  };
+
+  var VAR_DESC = {
+    target: "被举报人",
+    warn_count: "警告次数",
+    mute_duration: "禁言时长",
+    group_id: "群号",
+    group_name: "群名",
+    message: "消息内容",
+    reporter: "举报人",
+    target_report_count: "被举报累计次数",
+    ai_judgement: "AI 判断结论",
+    ai_confidence: "AI 置信度",
+    recent_count: "最近消息条数",
+    recent_times: "最近消息时间",
+    report_id: "举报 ID",
+    handler: "处理人",
+    group_rules: "本群群规"
+  };
+
+  /* ================= 普通分区字段 ================= */
+  var SECTIONS = [
+    {
+      id: "ai", label: "AI 研判", icon: "ai",
+      title: "AI 研判", desc: "举报消息交给 AI 自动分析的相关设置",
+      groups: [{
+        title: "研判模型", desc: "选择由哪个 AI 提供商来做内容研判",
+        fields: [
+          { key: "ai_provider_id", label: "研判用 AI 提供商", type: "provider",
+            hint: "留空或指定的提供商不存在时，使用当前会话默认的 AI 提供商" },
+          { key: "ai_confidence_threshold", label: "判定违规的置信度阈值", type: "number",
+            min: 0, max: 1, step: 0.05, hint: "AI 判定违规且置信度 ≥ 该值才会自动撤回/禁言，否则转人工" },
+          { key: "ai_timeout", label: "单次调用超时", type: "number", min: 5, max: 120, step: 5,
+            unit: "秒", hint: "超时视为无法判断，转人工处理" },
+          { key: "ai_retry_times", label: "调用失败重试次数", type: "number", min: 0, max: 5, step: 1,
+            unit: "次" }
+        ]
+      }, {
+        title: "研判提示词", desc: "告诉 AI 判断标准，务必保留输出 JSON 的要求",
+        fields: [
+          { key: "ai_system_prompt", label: "系统提示词", type: "textarea", rows: 11, vars: ["group_rules"],
+            hint: "必须保留要求 AI 输出 JSON（decision / confidence / reason / target_message_id）的说明" }
+        ]
+      }]
+    },
+    {
+      id: "groups", label: "默认群配置", icon: "groups",
+      title: "默认群配置", desc: "对所有群生效，可被「分群覆盖」单独覆盖",
+      groups: [{
+        title: "群规与通知对象", desc: "AI 研判依据、转人工时要通知的人",
+        fields: [
+          { key: "default_group_rules", label: "默认群规", type: "textarea", rows: 6,
+            hint: "AI 研判的主要依据，可在「分群覆盖」里为单个群单独设置" },
+          { key: "default_receiver_ids", label: "默认指定用户 QQ", type: "list", rows: 4,
+            hint: "转人工时，除 bot 管理员外还会私聊通知这些 QQ。每行一个" },
+          { key: "auto_include_group_admins", label: "自动把本群管理员纳入通知对象", type: "bool",
+            hint: "通过群成员列表自动识别群主/管理员并一同私聊通知" }
+        ]
+      }, {
+        title: "处理与限流", desc: "自动处理力度与举报频率限制",
+        fields: [
+          { key: "default_mute_duration", label: "默认禁言时长", type: "number",
+            min: 60, max: 2592000, step: 60, unit: "秒", hint: "例如 600 = 10 分钟" },
+          { key: "recent_msg_count", label: "无引用举报读取最近消息条数", type: "number",
+            min: 1, max: 30, step: 1, unit: "条" },
+          { key: "report_cooldown", label: "举报冷却时间", type: "number", min: 0, max: 600, step: 10,
+            unit: "秒", hint: "同一人在同一群两次举报的最小间隔，0 表示不限制" },
+          { key: "daily_report_limit", label: "单人每日举报上限", type: "number", min: 0, max: 200, step: 5,
+            unit: "次", hint: "0 表示不限制" }
+        ]
+      }]
+    },
+    {
+      id: "behavior", label: "行为开关", icon: "behavior",
+      title: "行为开关", desc: "举报流程中的各类开关与权限",
+      groups: [{
+        title: "通知与播报", desc: "什么时候发通知、发在哪",
+        fields: [
+          { key: "notify_admin_when_safe", label: "AI 判断安全时也通知管理员", type: "bool",
+            hint: "开启后会用「安全通知模板」私聊告知，仅告知不要求回复" },
+          { key: "announce_safe_in_group", label: "AI 判断安全时在群内发提示", type: "bool",
+            hint: "开启后会在群里发一条「已核实安全、不作处理」，文案用「群内安全提示模板」" },
+          { key: "notify_on_resolved", label: "处理完成后通知其他已通知对象", type: "bool" },
+          { key: "broadcast_result_in_group", label: "在群内播报处理结果", type: "bool",
+            hint: "使用「群内处理结果播报模板」" },
+          { key: "enable_target_report_count", label: "统计被举报人累计被举报次数", type: "bool",
+            hint: "按「群 + 被举报人」累计，供模板变量 {target_report_count} 使用" }
+        ]
+      }, {
+        title: "举报权限", desc: "谁可以举报、谁可以确认处理",
+        fields: [
+          { key: "allow_everyone_report", label: "允许所有人举报", type: "bool",
+            hint: "关闭后仅「举报人白名单」中的用户可以举报" },
+          { key: "reporters_whitelist", label: "举报人白名单", type: "list", rows: 4,
+            hint: "仅在「允许所有人举报」关闭时生效。每行一个 QQ" },
+          { key: "receiver_can_handle", label: "指定用户与管理同等处理权限", type: "bool",
+            hint: "开启后「指定用户」回复处理内容也视为处理完成" },
+          { key: "reply_content", label: "管理员处理完成的回复内容", type: "text" }
+        ]
+      }, {
+        title: "超时处理",
+        fields: [
+          { key: "report_expire_minutes", label: "举报超时未处理时长", type: "number",
+            min: 5, max: 1440, step: 5, unit: "分钟", hint: "超时仍无人处理则标记为 expired" }
+        ]
+      }]
+    },
+    {
+      id: "templates", label: "通知模板", icon: "templates",
+      title: "通知模板", desc: "点击下方变量按钮可在光标处插入变量",
+      groups: [{
+        title: "群内消息", desc: "发送到群聊里的文案",
+        fields: [
+          { key: "warn_template", label: "群内警告模板", type: "textarea", rows: 4,
+            vars: ["target", "warn_count", "mute_duration", "group_id"],
+            hint: "AI 自动处理时在群内发送，会先自动艾特被举报人" },
+          { key: "group_broadcast_template", label: "群内处理结果播报模板", type: "textarea", rows: 3,
+            vars: ["report_id", "handler"], hint: "仅在「在群内播报处理结果」开启时使用" },
+          { key: "safe_group_template", label: "群内安全提示模板", type: "textarea", rows: 3,
+            vars: ["target", "group_name", "group_id", "reporter", "report_id", "ai_judgement", "ai_confidence", "target_report_count"],
+            hint: "仅在「AI 判断安全时在群内发提示」开启时使用" }
+        ]
+      }, {
+        title: "私聊通知", desc: "私聊发送给管理员 / 指定用户的文案",
+        fields: [
+          { key: "safe_notify_template", label: "安全通知模板", type: "textarea", rows: 7,
+            vars: ["group_name", "group_id", "target", "message", "reporter", "target_report_count", "ai_judgement", "ai_confidence"],
+            hint: "AI 判断安全且开关打开时发送" },
+          { key: "manual_notify_template", label: "转人工通知（引用举报 · 含内容）", type: "textarea", rows: 8,
+            vars: ["group_name", "group_id", "target", "message", "reporter", "target_report_count", "ai_judgement", "ai_confidence", "report_id"] },
+          { key: "manual_notify_template_nocontent", label: "转人工通知（无引用 · 不含内容）", type: "textarea", rows: 9,
+            vars: ["group_name", "group_id", "target", "recent_count", "recent_times", "reporter", "target_report_count", "ai_judgement", "ai_confidence", "report_id"],
+            hint: "为防止机器人被封号，不能包含具体消息内容，只能给出最近消息时间" },
+          { key: "resolved_notify_template", label: "处理完成通知模板", type: "textarea", rows: 5,
+            vars: ["report_id", "group_name", "group_id", "handler"] }
+        ]
+      }]
+    }
+  ];
+
+  /* 分群覆盖可覆盖的字段（键名与插件内部一致） */
+  var OVERRIDE_FIELDS = [
+    { key: "group_rules", label: "群规", type: "textarea", rows: 5 },
+    { key: "receiver_ids", label: "通知 QQ", type: "list", rows: 3 },
+    { key: "mute_duration", label: "禁言时长", type: "number", min: 60, max: 2592000, step: 60, unit: "秒" },
+    { key: "recent_msg_count", label: "最近消息条数", type: "number", min: 1, max: 30, step: 1, unit: "条" },
+    { key: "report_cooldown", label: "举报冷却", type: "number", min: 0, max: 600, step: 10, unit: "秒" },
+    { key: "daily_limit", label: "每日举报上限", type: "number", min: 0, max: 200, step: 5, unit: "次" },
+    { key: "notify_admin_when_safe", label: "安全时通知", type: "bool" },
+    { key: "announce_safe_in_group", label: "安全时群内提示", type: "bool" },
+    { key: "auto_include_group_admins", label: "纳入群管理员", type: "bool" },
+    { key: "reply_content", label: "处理回复内容", type: "text" },
+    { key: "warn_template", label: "警告模板", type: "textarea", rows: 3 },
+    { key: "safe_group_template", label: "群内安全提示模板", type: "textarea", rows: 3 }
+  ];
+
+  /* ================= 工具 ================= */
+  var providers = [];
+  var defaults = {};
+  var ovList = [];            // [{id:string, data:{key:value}}]
+  var dirty = false;
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function $ (sel, root) { return (root || document).querySelector(sel); }
+  function $$ (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function nid(section, key) { return "f__" + section + "__" + key; }
+  function num(v) { return v === "" || v == null ? null : Number(v); }
+
+  function toast(msg, kind) {
+    var box = $("#toast-box");
+    var el = document.createElement("div");
+    el.className = "toast " + (kind || "info");
+    el.textContent = msg;
+    box.appendChild(el);
+    setTimeout(function () { el.remove(); }, 2600);
+  }
+
+  function markDirty() {
+    if (dirty) return;
+    dirty = true;
+    $("#dirty").classList.add("on");
+  }
+  function clearDirty() {
+    dirty = false;
+    $("#dirty").classList.remove("on");
+  }
+
+  /* ================= 控件渲染 ================= */
+  function controlHtml(id, f, value) {
+    if (f.type === "bool") {
+      return '<label class="switch"><input type="checkbox" id="' + id + '">' +
+        '<span class="track"></span></label>';
+    }
+    var v = value == null ? "" : String(value);
+    if (f.type === "provider") {
+      return '<select id="' + id + '"><option value="">（使用当前会话默认提供商）</option></select>';
+    }
+    if (f.type === "number") {
+      return '<div class="unit"><input type="number" id="' + id + '" value="' + esc(v) + '"' +
+        (f.min != null ? ' min="' + f.min + '"' : "") +
+        (f.max != null ? ' max="' + f.max + '"' : "") +
+        (f.step != null ? ' step="' + f.step + '"' : "") + ">" +
+        (f.unit ? '<span class="u">' + esc(f.unit) + "</span>" : "") + "</div>";
+    }
+    if (f.type === "list") {
+      return '<textarea id="' + id + '" rows="' + (f.rows || 4) + '" placeholder="每行一个">' +
+        esc(Array.isArray(value) ? value.join("\n") : (value == null ? "" : value)) + "</textarea>";
+    }
+    if (f.type === "textarea" || f.type === "json") {
+      return '<textarea id="' + id + '" rows="' + (f.rows || 4) + '"' +
+        (f.type === "json" ? ' class="mono" spellcheck="false"' : "") + ">" + esc(v) + "</textarea>";
+    }
+    return '<input type="text" id="' + id + '" value="' + esc(v) + '">';
+  }
+
+  function varsHtml(vars) {
+    if (!vars || !vars.length) return "";
+    var chips = vars.map(function (v) {
+      var label = VAR_DESC[v] || v;
+      return '<span class="var" data-var="' + esc(v) +
+        '" title="插入 {' + esc(v) + '}">' + esc(label) + " · {" + esc(v) + "}</span>";
+    }).join("");
+    return '<div class="vars">' + chips + "</div>";
+  }
+
+  function fieldHtml(sectionKey, f) {
+    var id = nid(sectionKey, f.key);
+    var hint = f.hint ? '<div class="hint">' + esc(f.hint) + "</div>" : "";
+    var isBool = f.type === "bool";
+    var ctrl = controlHtml(id, f, null);
+    var reset = (f.type === "textarea" || f.type === "json")
+      ? '<div class="preset-row"><button type="button" class="btn sm btn-ghost reset-field" data-group="' +
+        esc(sectionKey) + '" data-key="' + esc(f.key) + '">恢复默认模板</button></div>'
+      : "";
+
+    if (isBool) {
+      return '<div class="field"><div class="head">' +
+        "<div><label class=\"label\" for=\"" + id + "\">" + esc(f.label) + "</label>" + hint + "</div>" +
+        ctrl + "</div></div>";
+    }
+    return '<div class="field has-ctrl"><div class="head"><div>' +
+      '<label class="label" for="' + id + '">' + esc(f.label) + "</label>" + hint + "</div></div>" +
+      '<div class="ctrl">' + ctrl + "</div>" +
+      varsHtml(f.vars) + reset + "</div>";
+  }
+
+  function groupCardHtml(sectionKey, g) {
+    var fields = g.fields.map(function (f) { return fieldHtml(sectionKey, f); }).join("");
+    return '<section class="card"><div class="card-head"><h2>' + esc(g.title) + "</h2>" +
+      (g.desc ? "<p>" + esc(g.desc) + "</p>" : "") + '</div><div class="card-body">' + fields + "</div></section>";
+  }
+
+  function buildViews() {
+    var html = "";
+    SECTIONS.forEach(function (s) {
+      html += '<div class="view" data-view="' + s.id + '" hidden>' +
+        s.groups.map(function (g) { return groupCardHtml(s.id, g); }).join("") + "</div>";
+    });
+    html += '<div class="view" data-view="overrides" hidden>' +
+      '<div class="ov-tip">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8.2v.2"/><path d="M12 11.6v4.2"/></svg>' +
+      "<div>这里可以为<b>单个群</b>单独覆盖上面的默认设置。只勾选需要覆盖的项，未勾选的项继续沿用默认值。" +
+      "群号可从下方候选里选，也可直接填写。</div></div>" +
+      '<section class="card"><div class="card-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
+      '<div><h2>分群覆盖列表</h2><p>按群号生效，未列出的群使用默认配置</p></div>' +
+      '<button type="button" class="btn primary sm" id="ov-add">添加分群</button></div>' +
+      '<div class="card-body" id="ov-list"></div></section></div>';
+    $("#views").innerHTML = html;
+  }
+
+  /* ================= 分群覆盖编辑器 ================= */
+  function renderOvList() {
+    var box = $("#ov-list");
+    if (!ovList.length) {
+      box.innerHTML = '<div class="ov-empty">还没有分群覆盖配置，点击右上角「添加分群」开始</div>';
+      return;
+    }
+    box.innerHTML = ovList.map(function (entry, i) {
+      var fields = OVERRIDE_FIELDS.map(function (f) {
+        var on = entry.data[f.key] !== undefined;
+        var ctrlId = "ov__" + i + "__" + f.key;
+        return '<div class="ov-field' + (on ? " on" : "") + '" data-key="' + f.key + '">' +
+          '<label class="chk"><input type="checkbox" class="ov-enable"' + (on ? " checked" : "") + ">" +
+          "<span>" + esc(f.label) + "</span></label>" +
+          '<div class="ov-ctrl">' + controlHtml(ctrlId, f, entry.data[f.key]) + "</div></div>";
+      }).join("");
+      return '<div class="ov-card" data-index="' + i + '">' +
+        '<div class="ov-card-head"><div class="gid">' +
+        '<span class="tag">群号</span>' +
+        '<input type="text" class="ov-id" list="known-groups" placeholder="例如 123456789" value="' + esc(entry.id) + '">' +
+        "</div>" +
+        '<button type="button" class="btn sm danger ov-del">删除</button></div>' +
+        '<div class="ov-fields">' + fields + "</div></div>";
+    }).join("");
+
+    $$(".ov-card", box).forEach(function (card) {
+      var idx = Number(card.getAttribute("data-index"));
+      var entry = ovList[idx];
+
+      $(".ov-id", card).addEventListener("input", function () { entry.id = this.value; markDirty(); });
+      $(".ov-del", card).addEventListener("click", function () { confirmDelete(entry, this); });
+
+      $$(".ov-field", card).forEach(function (row) {
+        var key = row.getAttribute("data-key");
+        var chk = $(".ov-enable", row);
+        var ctrl = $(".ov-ctrl", row);
+        var input = $("input,textarea,select", ctrl);
+        if (entry.data[key] !== undefined) writeControl(input, key, entry.data[key]);
+
+        chk.addEventListener("change", function () {
+          if (chk.checked) {
+            var v = readControl(input, key);
+            if (v === null) v = defaultOvValue(key);
+            entry.data[key] = v;
+            row.classList.add("on");
+            writeControl(input, key, v);
+          } else {
+            delete entry.data[key];
+            row.classList.remove("on");
+          }
+          markDirty();
+        });
+        input.addEventListener("input", function () {
+          if (!chk.checked) return;
+          var v = readControl(input, key);
+          if (v === null) { delete entry.data[key]; } else { entry.data[key] = v; }
+          markDirty();
+        });
+        input.addEventListener("change", function () { input.dispatchEvent(new Event("input")); });
+      });
+    });
+  }
+
+  function defaultOvValue(key) {
+    var f = OVERRIDE_FIELDS.filter(function (x) { return x.key === key; })[0] || {};
+    if (f.type === "bool") return false;
+    if (f.type === "list") return [];
+    if (f.type === "number") return f.min != null ? f.min : 0;
+    return "";
+  }
+
+  function readControl(input, key) {
+    var f = OVERRIDE_FIELDS.filter(function (x) { return x.key === key; })[0] || {};
+    if (f.type === "bool") return input.checked;
+    if (f.type === "list") {
+      return input.value.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+    if (f.type === "number") return num(input.value.trim());
+    return input.value;
+  }
+
+  function writeControl(input, key, v) {
+    var f = OVERRIDE_FIELDS.filter(function (x) { return x.key === key; })[0] || {};
+    if (f.type === "bool") input.checked = !!v;
+    else if (f.type === "list") input.value = Array.isArray(v) ? v.join("\n") : (v == null ? "" : String(v));
+    else input.value = v == null ? "" : String(v);
+  }
+
+  var pendingDel = 0;
+  function confirmDelete(entry, btn) {
+    var now = Date.now();
+    if (now - pendingDel > 3000) {
+      pendingDel = now;
+      toast("再点一次「删除」确认移除这个分群的覆盖配置", "warn");
+      return;
+    }
+    pendingDel = 0;
+    ovList = ovList.filter(function (x) { return x !== entry; });
+    renderOvList();
+    markDirty();
+    toast("已移除", "info");
+  }
+
+  /* ================= 载入 / 回填 ================= */
+  function fillProviders() {
+    var opts = '<option value="">（使用当前会话默认提供商）</option>';
+    providers.forEach(function (p) {
+      opts += '<option value="' + esc(p.id) + '">' + esc(p.label || p.id) + "</option>";
+    });
+    SECTIONS.forEach(function (s) {
+      s.groups.forEach(function (g) {
+        g.fields.forEach(function (f) {
+          if (f.type !== "provider") return;
+          var sel = $("#" + nid(s.id, f.key));
+          if (!sel) return;
+          var cur = sel.value;
+          sel.innerHTML = opts;
+          sel.value = cur;
+        });
+      });
+    });
+  }
+
+  function fillKnownGroups(list) {
+    var dl = $("#known-groups");
+    dl.innerHTML = (list || []).map(function (g) {
+      var label = g.name ? (g.id + " · " + g.name) : g.id;
+      return '<option value="' + esc(g.id) + '">' + esc(label) + "</option>";
+    }).join("");
+  }
+
+  function fill(cfg) {
+    cfg = cfg || {};
+    fillProviders();
+    SECTIONS.forEach(function (s) {
+      var sc = cfg[s.id] || {};
+      s.groups.forEach(function (g) {
+        g.fields.forEach(function (f) {
+          var el = $("#" + nid(s.id, f.key));
+          if (!el) return;
+          var v = sc[f.key];
+          if (f.type === "bool") el.checked = !!v;
+          else if (f.type === "provider") el.value = v == null ? "" : String(v);
+          else if (f.type === "list") el.value = Array.isArray(v) ? v.join("\n") : (v == null ? "" : String(v));
+          else el.value = v == null ? "" : String(v);
+        });
+      });
+    });
+
+    // 分群覆盖
+    var raw = (cfg.groups || {}).group_overrides;
+    var obj = {};
+    if (raw && typeof raw === "object") obj = raw;
+    else if (typeof raw === "string" && raw.trim()) {
+      try { obj = JSON.parse(raw) || {}; } catch (e) { obj = {}; }
+    }
+    ovList = Object.keys(obj).map(function (gid) {
+      return { id: gid, data: (obj[gid] && typeof obj[gid] === "object") ? obj[gid] : {} };
+    });
+    renderOvList();
+  }
+
+  /* ================= 收集 / 保存 ================= */
+  function collect() {
+    var out = { ai: {}, groups: {}, behavior: {}, templates: {} };
+    SECTIONS.forEach(function (s) {
+      s.groups.forEach(function (g) {
+        g.fields.forEach(function (f) {
+          var el = $("#" + nid(s.id, f.key));
+          if (!el) return;
+          var v;
+          if (f.type === "bool") v = el.checked;
+          else if (f.type === "list") v = el.value.split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean);
+          else if (f.type === "number") v = num(el.value.trim());
+          else v = el.value;
+          if (f.type === "number" && v === null) return;
+          out[s.id][f.key] = v;
+        });
+      });
+    });
+
+    // 分群覆盖 -> JSON 字符串
+    var obj = {};
+    ovList.forEach(function (entry) {
+      var gid = String(entry.id || "").trim();
+      if (!gid) return;
+      var data = {};
+      Object.keys(entry.data).forEach(function (k) {
+        var v = entry.data[k];
+        if (v === null || v === undefined) return;
+        if (Array.isArray(v) && !v.length) return;
+        data[k] = v;
+      });
+      obj[gid] = data;
+    });
+    out.groups.group_overrides = JSON.stringify(obj);
+    return out;
+  }
+
+  async function load() {
+    try {
+      if (!bridge || typeof bridge.apiGet !== "function") throw new Error("bridge-sdk.js 未加载");
+      await bridge.ready();
+      var data = await bridge.apiGet("config");
+      providers = (data && data.providers) || [];
+      defaults = (data && data.defaults) || {};
+      fillKnownGroups((data && data.known_groups) || []);
+      fill((data && data.config) || {});
+      clearDirty();
+      $("#btn-save").disabled = false;
+    } catch (e) {
+      toast("载入失败：" + (e && e.message ? e.message : e), "err");
+      $("#views").innerHTML = '<div class="skeleton">载入失败，请点击右上角「重新加载」重试</div>';
+    }
+  }
+
+  async function save() {
+    var btn = $("#btn-save");
+    btn.disabled = true;
+    btn.textContent = "保存中…";
+    try {
+      if (!bridge || typeof bridge.apiPost !== "function") throw new Error("bridge-sdk.js 未加载");
+      var cfg = collect();
+      var res = await bridge.apiPost("config", { config: cfg });
+      if (res && res.config) fill(res.config);
+      clearDirty();
+      toast("保存成功", "ok");
+    } catch (e) {
+      toast("保存失败：" + (e && e.message ? e.message : e), "err");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "保存配置";
+    }
+  }
+
+  /* ================= 导航 ================= */
+  function showSection(id) {
+    $$(".nav-item").forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-nav") === id);
+    });
+    $$(".view").forEach(function (v) {
+      v.hidden = v.getAttribute("data-view") !== id;
+    });
+    var sec = SECTIONS.filter(function (s) { return s.id === id; })[0];
+    var title = id === "overrides" ? "分群覆盖" : (sec ? sec.title : id);
+    var desc = id === "overrides" ? "为单个群单独覆盖默认设置" : (sec ? sec.desc : "");
+    $("#page-title").textContent = title;
+    $("#page-crumb").textContent = "聊天消息举报 · " + desc;
+    try { localStorage.setItem("chat_report_tab", id); } catch (e) {}
+  }
+
+  function buildNav() {
+    var items = SECTIONS.map(function (s) {
+      return '<button type="button" class="nav-item" data-nav="' + s.id + '">' +
+        ICON[s.icon] + "<span>" + esc(s.label) + "</span></button>";
+    }).join("");
+    items += '<button type="button" class="nav-item" data-nav="overrides">' +
+      ICON.overrides + "<span>分群覆盖</span></button>";
+    $("#nav").innerHTML = items;
+    $$(".nav-item").forEach(function (b) {
+      b.addEventListener("click", function () { showSection(b.getAttribute("data-nav")); });
+    });
+  }
+
+  /* ================= 事件 ================= */
+  /* 变量插入 / 恢复默认：渲染完成后逐字段直接绑定，避免 id 查找出错 */
+  function bindFieldActions() {
+    $$(".var").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        var field = chip.closest(".field");
+        var ta = field ? field.querySelector("textarea, input[type='text']") : null;
+        if (!ta) { toast("未找到对应的输入框", "warn"); return; }
+        var token = "{" + chip.getAttribute("data-var") + "}";
+        var start = ta.selectionStart;
+        var end = ta.selectionEnd;
+        if (start == null || end == null || ta.readOnly) { start = end = ta.value.length; }
+        ta.value = ta.value.slice(0, start) + token + ta.value.slice(end);
+        ta.selectionStart = ta.selectionEnd = start + token.length;
+        ta.focus();
+        markDirty();
+      });
+    });
+
+    $$(".reset-field").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var grp = btn.getAttribute("data-group");
+        var key = btn.getAttribute("data-key");
+        var d = (defaults[grp] || {})[key];
+        if (d === undefined) { toast("该项没有默认值", "warn"); return; }
+        var field = btn.closest(".field");
+        var el = field ? field.querySelector("textarea, input, select") : null;
+        if (!el) return;
+        if (Array.isArray(d)) el.value = d.join("\n");
+        else el.value = d == null ? "" : String(d);
+        markDirty();
+        toast("已恢复默认模板（记得保存）", "info");
+      });
+    });
+  }
+
+  function bindGlobal() {
+    $("#views").addEventListener("input", function (e) {
+      if (e.target.closest(".ov-card")) return; // 分群编辑器单独处理
+      markDirty();
+    });
+    $("#views").addEventListener("change", function (e) {
+      if (e.target.closest(".ov-card")) return;
+      markDirty();
+    });
+
+    $("#ov-add").addEventListener("click", function () {
+      ovList.push({ id: "", data: {} });
+      renderOvList();
+      markDirty();
+      var cards = $$(".ov-card");
+      var last = cards[cards.length - 1];
+      if (last) { var inp = $(".ov-id", last); if (inp) inp.focus(); }
+    });
+
+    $("#btn-save").addEventListener("click", save);
+
+    var pendingReload = 0;
+    $("#btn-reload").addEventListener("click", function () {
+      var now = Date.now();
+      if (dirty && now - pendingReload > 3000) {
+        pendingReload = now;
+        toast("有未保存的修改，再点一次将放弃并重新载入", "warn");
+        return;
+      }
+      pendingReload = 0;
+      load();
+    });
+  }
+
+  /* ================= 启动 ================= */
+  buildNav();
+  buildViews();
+  bindFieldActions();
+  bindGlobal();
+
+  var VALID_TABS = SECTIONS.map(function (s) { return s.id; }).concat(["overrides"]);
+  var start = "ai";
+  try { start = localStorage.getItem("chat_report_tab") || "ai"; } catch (e) {}
+  if (VALID_TABS.indexOf(start) < 0) start = "ai";
+  showSection(start);
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", load);
+  } else {
+    load();
+  }
+})();
+</script>
+</body>
+</html>
